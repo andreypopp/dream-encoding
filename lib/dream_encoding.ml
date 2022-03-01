@@ -194,7 +194,7 @@ let compress handler req =
     let%lwt body = Dream.body response in
     Lwt.return @@ with_encoded_body ~algorithm body response
 
-let decompress handler req =
+let with_decoded_body msg =
   let rec aux algorithms content =
     match algorithms with
     | [] ->
@@ -204,16 +204,21 @@ let decompress handler req =
     | _ :: _rest ->
       Error (`Msg "Unsopported encoding directive")
   in
-  let algorithms = content_encodings req in
+  let algorithms = content_encodings msg in
   match algorithms with
-  | None ->
-    handler req
+  | None -> Lwt.return_ok msg
   | Some algorithms ->
-    let%lwt body = Dream.body req in
-    let body = aux algorithms body in
-    (match body with
+    let%lwt body = Dream.body msg in
+    (match aux algorithms body with
     | Ok body ->
-      Dream.set_body req body;
-      handler req
+      Dream.set_body msg body;
+      Lwt.return_ok msg
     | Error (`Msg err) ->
-      Dream.respond ~status:`Unsupported_Media_Type err)
+      Lwt.return_error err)
+
+let decompress handler req =
+  match%lwt with_decoded_body req with
+  | Ok req ->
+    handler req
+  | Error err ->
+    Dream.respond ~status:`Unsupported_Media_Type err

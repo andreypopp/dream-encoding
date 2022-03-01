@@ -49,6 +49,10 @@ val with_encoded_body
 
     [algorithm] defaults to [`Deflate]. *)
 
+val with_decoded_body
+  : 'a Dream.message
+  -> ('a Dream.message, string) result Lwt.t
+
 val accepted_encodings
   :  'a Dream.message
   -> [ `Gzip | `Compress | `Deflate | `Identity | `Any | `Unknown of string ]
